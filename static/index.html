@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f2">
+  <meta name="description" content="A small checklist that remembers the easy-to-forget things when you're heading out.">
+  <title>Latch List — leave with a little less to remember</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Latch List home"><span class="brand-icon" aria-hidden="true">↗</span><span>latch<span class="brand-light">list</span></span></a>
+    <div class="top-note"><span class="status-dot"></span><span>Made for the moment before you go</span></div>
+    <button class="quiet-button" id="resetDone" type="button" title="Remove completed items">Clear done</button>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="intro">
+      <div class="intro-copy">
+        <div class="eyebrow"><span class="eyebrow-line"></span> YOUR DAY, WITH FEWER BACKTRACKS</div>
+        <h1>Make the door<br><em>do the remembering.</em></h1>
+        <p>Keys, a library book, the parcel that needs returning. Put the little things somewhere they’ll be seen at the right moment.</p>
+        <div class="today-line"><span class="sun-mark" aria-hidden="true">☼</span><span id="todayText">A good day to leave prepared.</span></div>
+      </div>
+      <div class="door-illustration" aria-hidden="true">
+        <div class="sun-disc"></div><div class="door-frame"><div class="door-panel"><i></i></div><span class="door-knob"></span></div>
+        <div class="key-ring"><span>⌁</span><small>ready</small></div>
+        <div class="floor-line"></div>
+      </div>
+    </section>
+
+    <section class="workspace" aria-label="Your leaving checklist">
+      <div class="context-row">
+        <div><div class="section-kicker">PICK YOUR MOMENT</div><div class="context-caption">One list for each kind of leaving.</div></div>
+        <div class="context-tabs" role="tablist" aria-label="Checklist context">
+          <button class="context-tab active" data-context="home" role="tab" aria-selected="true"><span class="tab-icon">⌂</span><span>Leaving home</span></button>
+          <button class="context-tab" data-context="gym" role="tab" aria-selected="false"><span class="tab-icon">◌</span><span>Gym bag</span></button>
+          <button class="context-tab" data-context="errands" role="tab" aria-selected="false"><span class="tab-icon">↝</span><span>Errands</span></button>
+        </div>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-icon" aria-hidden="true">✓</div>
+        <div class="progress-copy"><strong id="progressTitle">Your leaving-home check</strong><span id="progressText">A short check now can save a trip back later.</span></div>
+        <div class="progress-count"><strong id="progressCount">0/0</strong><span>ready</span></div>
+        <div class="progress-track"><span id="progressBar"></span></div>
+      </div>
+
+      <div class="list-head"><div><div class="section-kicker">THE CHECKLIST</div><h2 id="listTitle">Take it with you</h2></div><span class="list-hint">Tap a circle when it’s ready</span></div>
+      <div class="items" id="items" aria-live="polite" aria-busy="true"></div>
+
+      <form class="add-card" id="addForm">
+        <div class="add-heading"><div class="plus-mark">+</div><div><h3>Add a little reminder</h3><p>Capture it now; future-you has enough to think about.</p></div></div>
+        <div class="add-controls">
+          <label class="sr-only" for="itemTitle">Reminder</label>
+          <input id="itemTitle" name="title" maxlength="90" placeholder="e.g. Take the parcel to the post office" autocomplete="off" required>
+          <label class="sr-only" for="itemKind">Reminder type</label>
+          <select id="itemKind" name="kind" aria-label="Reminder type">
+            <option value="carry">Take with me</option>
+            <option value="stop">Do at a stop</option>
+            <option value="remember">Remember</option>
+          </select>
+          <label class="sr-only" for="itemPlace">Stop name</label>
+          <input id="itemPlace" name="place" maxlength="50" placeholder="Where?" class="place-input" hidden>
+          <button class="add-button" type="submit"><span>Add reminder</span><b>↗</b></button>
+        </div>
+      </form>
+
+      <div class="small-print"><span class="lock-mark" aria-hidden="true">▣</span> Your list stays on this computer. Nothing here needs your location.</div>
+    </section>
+
+    <footer><span>Latch List</span><span>A calmer 20 seconds at the door.</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
