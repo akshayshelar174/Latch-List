@@ -1,7 +1,16 @@
 const contextLabels = { home: "Leaving home", gym: "Gym bag", errands: "Errands" };
 const kindLabels = { carry: "Take with you", stop: "At a stop", remember: "Remember" };
+const storageKey = "latch-list-items-v1";
+const seeds = [
+  { id: "seed-home-keys", title: "Keys", context: "home", kind: "carry", place: "", done: false },
+  { id: "seed-home-wallet", title: "Wallet", context: "home", kind: "carry", place: "", done: false },
+  { id: "seed-home-water", title: "Water bottle", context: "home", kind: "carry", place: "", done: false },
+  { id: "seed-errands-book", title: "Return the library book", context: "errands", kind: "stop", place: "Library", done: false },
+  { id: "seed-errands-bags", title: "Reusable bags", context: "errands", kind: "carry", place: "", done: false },
+  { id: "seed-gym-clothes", title: "Workout clothes", context: "gym", kind: "carry", place: "", done: false },
+  { id: "seed-gym-bottle", title: "Fill the bottle", context: "gym", kind: "remember", place: "", done: false },
+];
 const state = { context: "home", items: [], toastTimer: null };
-
 const els = {
   items: document.getElementById("items"),
   tabs: [...document.querySelectorAll(".context-tab")],
@@ -17,15 +26,22 @@ const els = {
   toast: document.getElementById("toast"),
 };
 
-async function request(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-  });
-  if (response.status === 204) return null;
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "Something went wrong. Try again.");
-  return result;
+function readItems() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+    if (Array.isArray(saved)) return saved;
+  } catch (_error) { /* Restore starter lists if browser storage is unavailable or invalid. */ }
+  return seeds.map(item => ({ ...item }));
+}
+
+function saveItems() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state.items));
+    return true;
+  } catch (_error) {
+    toast("Browser storage is unavailable. Your changes may not be saved.");
+    return false;
+  }
 }
 
 function toast(message) {
@@ -92,11 +108,12 @@ function makeItem(item) {
 
 function render() {
   els.items.replaceChildren();
-  if (state.items.length === 0) els.items.append(makeEmpty());
-  else state.items.forEach(item => els.items.append(makeItem(item)));
+  const visible = state.items.filter(item => item.context === state.context);
+  if (visible.length === 0) els.items.append(makeEmpty());
+  else visible.forEach(item => els.items.append(makeItem(item)));
 
-  const total = state.items.length;
-  const done = state.items.filter(item => item.done).length;
+  const total = visible.length;
+  const done = visible.filter(item => item.done).length;
   const percent = total ? Math.round(done / total * 100) : 0;
   els.progressCount.textContent = `${done}/${total}`;
   els.progressBar.style.width = `${percent}%`;
@@ -108,39 +125,26 @@ function render() {
   els.items.setAttribute("aria-busy", "false");
 }
 
-async function loadItems() {
-  els.items.setAttribute("aria-busy", "true");
-  try {
-    state.items = await request(`/api/items?context=${encodeURIComponent(state.context)}`);
-    render();
-  } catch (error) {
-    els.items.replaceChildren();
-    const message = makeEmpty();
-    message.querySelector("strong").textContent = "Couldn’t load your checklist.";
-    message.querySelector("span").textContent = error.message;
-    els.items.append(message);
-    els.items.setAttribute("aria-busy", "false");
-  }
+function loadItems() {
+  state.items = readItems();
+  render();
 }
 
-async function setDone(item) {
-  try {
-    await request(`/api/items/${item.id}`, { method: "PATCH", body: JSON.stringify({ done: !item.done }) });
-    await loadItems();
-    toast(item.done ? "Back on the list." : "One less thing to carry in your head.");
-  } catch (error) { toast(error.message); }
+function setDone(item) {
+  state.items = state.items.map(entry => entry.id === item.id ? { ...entry, done: !entry.done } : entry);
+  saveItems();
+  loadItems();
+  toast(item.done ? "Back on the list." : "One less thing to carry in your head.");
 }
 
-async function removeItem(item) {
-  try {
-    await request(`/api/items/${item.id}`, { method: "DELETE" });
-    state.items = state.items.filter(entry => entry.id !== item.id);
-    render();
-    toast("Reminder removed.");
-  } catch (error) { toast(error.message); }
+function removeItem(item) {
+  state.items = state.items.filter(entry => entry.id !== item.id);
+  saveItems();
+  render();
+  toast("Reminder removed.");
 }
 
-els.tabs.forEach(tab => tab.addEventListener("click", async () => {
+els.tabs.forEach(tab => tab.addEventListener("click", () => {
   state.context = tab.dataset.context;
   els.tabs.forEach(button => {
     const selected = button === tab;
@@ -149,7 +153,7 @@ els.tabs.forEach(tab => tab.addEventListener("click", async () => {
   });
   els.form.reset();
   updatePlaceField();
-  await loadItems();
+  loadItems();
 }));
 
 function updatePlaceField() {
@@ -160,34 +164,39 @@ function updatePlaceField() {
 }
 els.kind.addEventListener("change", updatePlaceField);
 
-els.form.addEventListener("submit", async event => {
+els.form.addEventListener("submit", event => {
   event.preventDefault();
   const button = els.form.querySelector(".add-button");
   button.disabled = true;
-  try {
-    await request("/api/items", {
-      method: "POST",
-      body: JSON.stringify({
-        title: els.title.value.trim(), context: state.context,
-        kind: els.kind.value, place: els.place.value.trim(),
-      }),
-    });
-    els.form.reset();
-    updatePlaceField();
-    await loadItems();
-    toast("Tucked safely onto your list.");
-  } catch (error) { toast(error.message); }
-  finally { button.disabled = false; els.title.focus(); }
+  const title = els.title.value.trim();
+  const kind = els.kind.value;
+  const place = els.place.value.trim();
+  if (!title || title.length > 90 || (kind === "stop" && !place) || place.length > 50) {
+    toast("Check the reminder details and try again.");
+    button.disabled = false;
+    return;
+  }
+  state.items.push({
+    id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title, context: state.context, kind, place: kind === "stop" ? place : "", done: false,
+  });
+  saveItems();
+  els.form.reset();
+  updatePlaceField();
+  loadItems();
+  toast("Tucked safely onto your list.");
+  button.disabled = false;
+  els.title.focus();
 });
 
-document.getElementById("resetDone").addEventListener("click", async () => {
-  const completed = state.items.filter(item => item.done);
+document.getElementById("resetDone").addEventListener("click", () => {
+  const completed = state.items.filter(item => item.context === state.context && item.done);
   if (!completed.length) { toast("No completed reminders to clear."); return; }
-  try {
-    await Promise.all(completed.map(item => request(`/api/items/${item.id}`, { method: "DELETE" })));
-    await loadItems();
-    toast(`Cleared ${completed.length} completed reminder${completed.length === 1 ? "" : "s"}.`);
-  } catch (error) { toast(error.message); }
+  const completedIds = new Set(completed.map(item => item.id));
+  state.items = state.items.filter(item => !completedIds.has(item.id));
+  saveItems();
+  loadItems();
+  toast(`Cleared ${completed.length} completed reminder${completed.length === 1 ? "" : "s"}.`);
 });
 
 document.getElementById("todayText").textContent = new Intl.DateTimeFormat(undefined, {
