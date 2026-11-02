@@ -110,6 +110,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if os.environ.get("LATCH_PUBLIC_DEMO") == "1" and parsed.path.startswith("/api/"):
+            self._json({"error": "The public demo stores checklists in your browser."}, 404)
+            return
         if parsed.path == "/api/contexts":
             self._json([{"id": key, "label": value} for key, value in CONTEXTS.items()])
             return
@@ -134,6 +137,9 @@ class Handler(BaseHTTPRequestHandler):
         self._static(parsed.path)
 
     def do_POST(self) -> None:
+        if os.environ.get("LATCH_PUBLIC_DEMO") == "1":
+            self._json({"error": "The public demo stores checklists in your browser."}, 404)
+            return
         if urlparse(self.path).path != "/api/items":
             self._json({"error": "Route not found."}, 404)
             return
@@ -166,6 +172,9 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "Local storage is busy. Please retry."}, 503)
 
     def do_PATCH(self) -> None:
+        if os.environ.get("LATCH_PUBLIC_DEMO") == "1":
+            self._json({"error": "The public demo stores checklists in your browser."}, 404)
+            return
         parts = urlparse(self.path).path.strip("/").split("/")
         if len(parts) != 3 or parts[:2] != ["api", "items"]:
             self._json({"error": "Route not found."}, 404)
@@ -188,6 +197,9 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "Local storage is busy. Please retry."}, 503)
 
     def do_DELETE(self) -> None:
+        if os.environ.get("LATCH_PUBLIC_DEMO") == "1":
+            self._json({"error": "The public demo stores checklists in your browser."}, 404)
+            return
         parts = urlparse(self.path).path.strip("/").split("/")
         if len(parts) != 3 or parts[:2] != ["api", "items"]:
             self._json({"error": "Route not found."}, 404)
